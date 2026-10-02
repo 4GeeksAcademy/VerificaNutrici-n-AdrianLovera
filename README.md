@@ -1,1 +1,0 @@
-# VerificaNutrici-n-AdrianLovera
