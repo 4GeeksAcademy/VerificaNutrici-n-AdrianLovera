@@ -1,0 +1,802 @@
+{
+  "name": "SnackCheck - Revisión nutricional",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nutrition-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "4dcf9e8f-50c9-4b85-b045-bdf7e4968c11",
+      "name": "Webhook - Recibir código de barras",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1488,
+        3744
+      ],
+      "webhookId": "snackcheck-nutrition-check",
+      "notesInFlow": true,
+      "alwaysOutputData": false,
+      "notes": "Punto de entrada público POST. Usa la URL de producción solo después de importar, configurar, probar y activar este flujo. JSON esperado: { \"barcode\": \"3017620422003\" }."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0001",
+              "name": "barcode",
+              "value": "={{ String($json.body?.barcode ?? '').trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f74e96f-bdbb-4a09-8c6e-1c7e179da1ac",
+      "name": "Campos - Normalizar solicitud",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1712,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Lee únicamente body.barcode, como se define para esta solicitud. Lo conserva como texto para no perder ceros iniciales y elimina espacios exteriores. Si falta, usa una cadena vacía para activar la respuesta de ayuda."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0003",
+              "leftValue": "={{ $json.barcode }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5d7c9a2a-1c6d-4a7e-a5e6-c1c2f92448c6",
+      "name": "Si - Falta el código de barras",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Usa la condición integrada Texto → está vacío. Si el código falta, devuelve la documentación del servicio; si tiene contenido, continúa a la validación."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { servicio: 'SnackCheck: consulta nutricional', descripcion: 'Busca información nutricional de alimentos envasados y devuelve una evaluación clara y amable.', metodo: 'POST', ruta: '/nutrition-check', campoRequerido: 'barcode', formato: 'Solo dígitos; envía el código como texto para conservar los ceros iniciales.', ejemplo: { barcode: '3017620422003' } } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e6d5b27d-0d27-43a4-8c30-9cf7a93d95f3",
+      "name": "Responder - Documentación del servicio",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2144,
+        3536
+      ],
+      "notesInFlow": true,
+      "notes": "Respuesta de ayuda cuando no se envía el código. HTTP 200, application/json."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0006",
+              "leftValue": "={{ $json.barcode }}",
+              "rightValue": "^[0-9]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dfd6823d-66da-4535-b9de-f845b8b47056",
+      "name": "Si - El código contiene solo números",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2144,
+        3824
+      ],
+      "notesInFlow": true,
+      "notes": "Usa la condición integrada Texto → coincide con expresión regular, con el patrón ^[0-9]+$. Solo los códigos formados por dígitos continúan a la API."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'codigo_de_barras_invalido', mensaje: 'El código de barras debe contener solo dígitos. Envíalo como texto para conservar los ceros iniciales.', ejemplo: { barcode: '3017620422003' } } }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "43553ec1-1b00-4f4e-9b72-6fb8bc170b07",
+      "name": "Responder - Código de barras inválido",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2384,
+        3984
+      ],
+      "notesInFlow": true,
+      "notes": "Error de validación con instrucciones claras. HTTP 400, application/json."
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://world.openfoodfacts.org/api/v2/product/' + encodeURIComponent($json.barcode) + '.json?fields=product_name,nutriscore_grade,nutriments' }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "340d8059-ac3b-4ad3-9a00-752be057d61c",
+      "name": "API - Consultar producto en Open Food Facts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2384,
+        3728
+      ],
+      "notesInFlow": true,
+      "notes": "Consulta GET sin clave a Open Food Facts. Never Error está habilitado para que el cuerpo HTTP 404 llegue a la rama de producto no encontrado. Include Response Headers and Status queda desactivado, así que el JSON de la API sale directamente en la raíz, sin envoltorio body."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0011",
+              "name": "apiStatus",
+              "value": "={{ Number($json.status) }}",
+              "type": "number"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0012",
+              "name": "productName",
+              "value": "={{ $json.product?.product_name }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0014",
+              "name": "nutriscoreGrade",
+              "value": "={{ $json.product?.nutriscore_grade }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0015",
+              "name": "sugars100g",
+              "value": "={{ $json.product?.nutriments?.sugars_100g }}",
+              "type": "number"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0016",
+              "name": "salt100g",
+              "value": "={{ $json.product?.nutriments?.salt_100g }}",
+              "type": "number"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0017",
+              "name": "fat100g",
+              "value": "={{ $json.product?.nutriments?.fat_100g }}",
+              "type": "number"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0018",
+              "name": "energyKcal100g",
+              "value": "={{ $json.product?.nutriments?.['energy-kcal_100g'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d962d8a5-3c58-48c7-92f9-770f3921d1f3",
+      "name": "Campos - Conservar solo datos necesarios",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2864,
+        3728
+      ],
+      "notesInFlow": true,
+      "notes": "El nodo HTTP entrega el JSON de Open Food Facts directamente en la raíz. Este nodo copia solo status, nombre, Nutri-Score, azúcar, sal, grasa y energía; las comprobaciones de campos existentes están en el siguiente nodo Si. includeOtherFields está desactivado para descartar el resto del JSON."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0014",
+              "leftValue": "={{ $json.apiStatus }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c5da6533-759a-45c9-a4f9-331735e37ab3",
+      "name": "Si - Producto no encontrado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3104,
+        3728
+      ],
+      "notesInFlow": true,
+      "notes": "Usa la comparación numérica integrada de n8n: si apiStatus es distinto de 1, envía el resultado a producto no encontrado."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'producto_no_encontrado', mensaje: 'No encontramos ese código de barras en Open Food Facts. Revisa los dígitos o prueba con un producto conocido.', ejemplo: { barcode: '3017620422003', producto: 'Nutella' } } }}",
+        "options": {
+          "responseCode": 404,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ce36bef5-e2a2-48fb-8b52-16038545d770",
+      "name": "Responder - Producto no encontrado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3344,
+        3520
+      ],
+      "notesInFlow": true,
+      "notes": "Respuesta clara cuando no existe el producto. HTTP 404, application/json, con un código de ejemplo válido."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0026",
+              "leftValue": "={{ $json.sugars100g }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0101",
+              "leftValue": "={{ $json.salt100g }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0102",
+              "leftValue": "={{ $json.fat100g }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2fa8012c-6bd9-4ea0-90a8-8aea60eb1dab",
+      "name": "Si - Hay datos nutricionales suficientes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3344,
+        3776
+      ],
+      "notesInFlow": true,
+      "notes": "Usa tres comprobaciones numéricas integradas de n8n unidas con AND: azúcar, sal y grasa deben existir. El valor 0 existe y es válido; los campos ausentes envían el producto a la respuesta de datos insuficientes."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'datos_nutricionales_insuficientes', mensaje: 'El producto aparece en la base de datos, pero no tiene valores utilizables de azúcar, sal y grasa por cada 100 g. No podemos evaluarlo de forma fiable.', barcode: $('Campos - Normalizar solicitud').item.json.barcode, producto: $json.productName, camposRequeridos: ['sugars_100g', 'salt_100g', 'fat_100g'] } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "d4269d21-ebac-482f-ae46-f6d30348e32d",
+      "name": "Responder - Datos nutricionales insuficientes",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3824,
+        3984
+      ],
+      "notesInFlow": true,
+      "notes": "La falta de datos es una respuesta informativa, no un error del servidor: HTTP 200, application/json."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0029",
+              "name": "sugarFlag",
+              "value": "={{ $json.sugars100g < 5 ? 'low' : ($json.sugars100g <= 22.5 ? 'medium' : 'high') }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0030",
+              "name": "sugarHigh",
+              "value": "={{ $json.sugars100g > 22.5 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0031",
+              "name": "saltFlag",
+              "value": "={{ $json.salt100g > 1.5 ? 'high' : 'not high' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0032",
+              "name": "saltHigh",
+              "value": "={{ $json.salt100g > 1.5 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0033",
+              "name": "fatFlag",
+              "value": "={{ $json.fat100g > 17.5 ? 'high' : 'not high' }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0034",
+              "name": "fatHigh",
+              "value": "={{ $json.fat100g > 17.5 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0035",
+              "name": "highNutrientCount",
+              "value": "={{ ($json.sugars100g > 22.5 ? 1 : 0) + ($json.salt100g > 1.5 ? 1 : 0) + ($json.fat100g > 17.5 ? 1 : 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "22ff01aa-f399-4760-b9fe-3477034f657d",
+      "name": "Campos - Clasificar semáforo nutricional",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3824,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Umbrales por cada 100 g: azúcar bajo <5, medio entre 5 y 22,5 inclusive, alto >22,5; sal alta >1,5; grasa alta >17,5. El azúcar medio no cuenta como nutriente alto."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0037",
+              "name": "trafficLightVerdict",
+              "value": "={{ $json.highNutrientCount === 0 ? 'healthy' : ($json.highNutrientCount === 1 ? 'moderate' : 'unhealthy') }}",
+              "type": "string"
+            },
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0039",
+              "name": "verdictLevel",
+              "value": "={{ (() => { const trafficRank = $json.highNutrientCount === 0 ? 0 : ($json.highNutrientCount === 1 ? 1 : 2); return ['healthy','moderate','unhealthy'][Math.max(trafficRank, ({a:0,b:0,c:1,d:2,e:2})[$json.nutriscoreGrade] ?? trafficRank)]; })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5def03e8-8aff-4897-a31b-ba3345fc2ea8",
+      "name": "Campos - Determinar veredicto final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4064,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Calcula por separado el resultado del semáforo y el de Nutri-Score, y elige el peor. Si Nutri-Score falta o no se reconoce, usa solo el semáforo."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const concernScore = Number($json.sugarHigh) + Number($json.saltHigh) + Number($json.fatHigh);\nreturn { json: { ...$json, concernScore } };"
+      },
+      "id": "94ae7594-5a80-44c2-9bc3-0669b9ba0ded",
+      "name": "Código - Calcular indicador de preocupación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4288,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Cálculo de un solo elemento: suma las tres banderas de nutrientes altos para obtener concernScore (0–3). No establece ni modifica el nivel del veredicto."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Redacta para quien compra un párrafo breve y amable (máximo 3 frases). Usa solo estos datos, sin inventar ni contradecir el nivel. Producto: ' + $json.productName + '. Nivel: ' + ({healthy:'saludable',moderate:'moderado',unhealthy:'no saludable'}[$json.verdictLevel]) + '. Azúcar: ' + $json.sugars100g + ' g/100 g (' + ({low:'bajo',medium:'medio',high:'alto'}[$json.sugarFlag]) + '). Sal: ' + $json.salt100g + ' g/100 g (' + ($json.saltFlag === 'high' ? 'alta' : 'no alta') + '). Grasa: ' + $json.fat100g + ' g/100 g (' + ($json.fatFlag === 'high' ? 'alta' : 'no alta') + '). Nutri-Score: ' + ($json.nutriscoreGrade ?? 'sin dato') + '. Indicador: ' + $json.concernScore + ' de 3. ' + ($json.verdictLevel === 'unhealthy' ? 'Tono comprensivo y cauteloso; sugiérelo como capricho ocasional.' : 'Tono alentador; para moderado, menciona el equilibrio.') + ' Devuelve solo el párrafo.' }}"
+      },
+      "id": "277d8a61-8853-4119-aeaa-3a5ce861585a",
+      "name": "IA - Redactar explicación del veredicto",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        4560,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "La instrucción dinámica incluye el nivel calculado y elige un tono alentador o ligeramente cauteloso. La IA explica el resultado determinista; no decide la clasificación."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1d21f90-2a80-42be-a2ef-1f2e4f5d0045",
+              "name": "verdictText",
+              "value": "={{ (() => { const d = $('Código - Calcular indicador de preocupación').item.json; return `SNACKCHECK | ${d.verdictLevel === 'healthy' ? '🟢 Buena opción diaria' : d.verdictLevel === 'moderate' ? '🟡 Disfrútalo con equilibrio' : '🔴 Mejor como capricho ocasional'}\\n${d.productName}\\n\\nNUTRICIÓN POR CADA 100 g\\n${d.sugarFlag === 'high' ? '🔴' : d.sugarFlag === 'medium' ? '🟡' : '🟢'} Azúcar  ${d.sugars100g.toFixed(1)} g (${({low:'bajo',medium:'medio',high:'alto'})[d.sugarFlag]})\\n${d.saltFlag === 'high' ? '🔴' : '🟢'} Sal     ${d.salt100g.toFixed(2)} g\\n${d.fatFlag === 'high' ? '🔴' : '🟢'} Grasa   ${d.fat100g.toFixed(1)} g\\nNutri-Score: ${d.nutriscoreGrade == null ? 'sin dato' : d.nutriscoreGrade.toUpperCase()} | Indicador: ${d.concernScore}/3${d.energyKcal100g == null ? '' : `\\nEnergía: ${d.energyKcal100g} kcal`}\\n\\n${$json.text}`; })() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "06d531a7-f3fe-4896-8ce0-26ddd08dc40a",
+      "name": "Campos - Formatear veredicto para el cliente",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5024,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "Usa una plantilla de texto para mostrar nombre, azúcar, sal, grasa, Nutri-Score, indicador y párrafo de IA. La energía aparece solo si la API la entrega. Los datos se leen directamente del nodo de Código mediante la vinculación de elementos; no hay nodo de combinación."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.verdictText }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "65c793ff-2f6f-4f91-b549-58a9c68cab5f",
+      "name": "Responder - Veredicto nutricional",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        5264,
+        3744
+      ],
+      "notesInFlow": true,
+      "notes": "El veredicto se devuelve como texto sin formato: HTTP 200 y text/plain; charset=utf-8."
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        3952
+      ],
+      "id": "a44b7f03-7499-4005-98fd-a1bb5c4d8a79",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "hkYNQi5eso5m5Bod",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Recibir código de barras": {
+      "main": [
+        [
+          {
+            "node": "Campos - Normalizar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si - Falta el código de barras": {
+      "main": [
+        [
+          {
+            "node": "Responder - Documentación del servicio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Si - El código contiene solo números",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si - El código contiene solo números": {
+      "main": [
+        [
+          {
+            "node": "API - Consultar producto en Open Food Facts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder - Código de barras inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API - Consultar producto en Open Food Facts": {
+      "main": [
+        [
+          {
+            "node": "Campos - Conservar solo datos necesarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos - Normalizar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Si - Falta el código de barras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos - Conservar solo datos necesarios": {
+      "main": [
+        [
+          {
+            "node": "Si - Producto no encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si - Producto no encontrado": {
+      "main": [
+        [
+          {
+            "node": "Responder - Producto no encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Si - Hay datos nutricionales suficientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si - Hay datos nutricionales suficientes": {
+      "main": [
+        [
+          {
+            "node": "Campos - Clasificar semáforo nutricional",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder - Datos nutricionales insuficientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos - Clasificar semáforo nutricional": {
+      "main": [
+        [
+          {
+            "node": "Campos - Determinar veredicto final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos - Determinar veredicto final": {
+      "main": [
+        [
+          {
+            "node": "Código - Calcular indicador de preocupación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Código - Calcular indicador de preocupación": {
+      "main": [
+        [
+          {
+            "node": "IA - Redactar explicación del veredicto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA - Redactar explicación del veredicto": {
+      "main": [
+        [
+          {
+            "node": "Campos - Formatear veredicto para el cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos - Formatear veredicto para el cliente": {
+      "main": [
+        [
+          {
+            "node": "Responder - Veredicto nutricional",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "IA - Redactar explicación del veredicto",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7f674547-4932-4127-a56d-79485379672c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b4a7f31cb3bad9ceb4840def67e512584f29e70c79460badefb950fecfe67806"
+  },
+  "nodeGroups": [],
+  "id": "Hkff9duU3UStNPmx",
+  "tags": []
+}
